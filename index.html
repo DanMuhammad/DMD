@@ -1,4 +1,6 @@
-<!doctype html>
+
+
+  <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
@@ -31,11 +33,34 @@
   #gameArea{position:relative;background:linear-gradient(180deg,#071028,#091427); border-radius:10px; height:520px; overflow:hidden; border:1px solid rgba(255,255,255,0.03)}
   .coin{
     position:absolute; width:64px; height:64px; cursor:pointer; user-select:none;
-    transition:transform .12s ease;
-    will-change:left,top,transform;
+    transition:transform .12s ease, opacity .25s ease, left .2s linear, top .2s linear;
+    will-change:left,top,transform,opacity;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; color:#1b1b1b; text-shadow:0 1px 0 rgba(255,255,255,0.12);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.45);
   }
-  .coin.good{filter:drop-shadow(0 6px 12px rgba(0,0,0,0.5))}
-  .coin.bad{transform-origin:center; filter: drop-shadow(0 6px 16px rgba(0,0,0,0.6)) saturate(0.8); border-radius:8px;}
+  /* GOLD coin (good) */
+  .coin.good{
+    background:
+      radial-gradient(circle at 35% 28%, #fff7c9 0%, rgba(255,255,255,0) 20%),
+      radial-gradient(circle at 60% 60%, rgba(255,200,50,0.8), rgba(255,140,30,0.95) 60%),
+      linear-gradient(180deg,#ffd666 0%,#ffb84d 100%);
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.45), inset 0 -4px 8px rgba(0,0,0,0.08);
+  }
+  /* RED coin (bad) */
+  .coin.bad{
+    background:
+      radial-gradient(circle at 35% 28%, #fff0f0 0%, rgba(255,255,255,0) 20%),
+      linear-gradient(180deg,#ff8a8a 0%,#ff5b5b 60%,#ff3737 100%);
+    border: 1px solid rgba(0,0,0,0.15);
+    color:#fff;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.5), inset 0 -4px 8px rgba(0,0,0,0.12);
+  }
+
+  .coin:active{ transform: scale(1.08); }
+
   .controls{display:flex; gap:8px; margin-top:6px}
   button{padding:8px 12px;border-radius:8px;border:0;background:#1f6feb;color:#fff;cursor:pointer}
   button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06)}
@@ -74,7 +99,7 @@
         </div>
 
         <div class="footer-note">
-          Tips: Click gold coins to gain points. Avoid red coins (they subtract). Difficulty ramps up every 10 points.
+          Tips: Tap/click gold coins to gain points. Avoid red coins (they subtract). Difficulty ramps up every 10 points.
         </div>
       </div>
     </div>
@@ -88,18 +113,13 @@
   </div>
 
 <script>
-/*
- Endlessly progressive coin collector
- Author: ChatGPT (helper for Abokina)
-*/
-
 (() => {
   // Config
   const BASE_SPAWN_INTERVAL = 1400; // ms initial
-  const MIN_SPAWN_INTERVAL = 400; // ms cap
+  const MIN_SPAWN_INTERVAL = 380; // ms cap
   const BASE_BAD_CHANCE = 0.08; // chance of bad coin at low levels
-  const MAX_BAD_CHANCE = 0.3; // at higher levels
-  const MAX_COINS_ON_SCREEN = 8;
+  const MAX_BAD_CHANCE = 0.33; // at higher levels
+  const MAX_COINS_ON_SCREEN = 9;
 
   // DOM
   const gameArea = document.getElementById('gameArea');
@@ -117,182 +137,151 @@
   let score = 0;
   let high = parseInt(localStorage.getItem('dmd_high')||'0',10);
   highEl.textContent = high;
-  let alive = true;
   let startTime = Date.now();
-  let elapsedSec = 0;
   let spawnTimer = null;
   let moveTimer = null;
-  let spawnInterval = BASE_SPAWN_INTERVAL;
-  let coinsOnScreen = [];
   let paused = false;
+  let coinsOnScreen = [];
 
-  // Sounds (optional — will only play if allowed)
+  // Sounds (optional)
   const ding = new Audio('https://www.soundjay.com/buttons/sounds/button-09.mp3');
   ding.volume = 0.9;
   const badSound = new Audio('https://www.soundjay.com/button/sounds/button-10.mp3');
   badSound.volume = 0.9;
 
   // Helpers
+  function getLevel(){ return Math.floor(score/10)+1; }
+  function difficultyFactor(){ const level = getLevel(); return Math.min(1, level/100); }
+  function currentSpawnInterval(){
+    const f = difficultyFactor();
+    return Math.max(MIN_SPAWN_INTERVAL, BASE_SPAWN_INTERVAL - f*(BASE_SPAWN_INTERVAL-MIN_SPAWN_INTERVAL));
+  }
+  function currentBadChance(){ const f = difficultyFactor(); return BASE_BAD_CHANCE + f*(MAX_BAD_CHANCE-BASE_BAD_CHANCE); }
+
   function updateUI(){
     scoreEl.textContent = score;
     highEl.textContent = high;
-    elapsedSec = Math.floor((Date.now() - startTime)/1000);
+    const elapsedSec = Math.floor((Date.now()-startTime)/1000);
     timeEl.textContent = elapsedSec + 's';
-    const level = getLevel();
-    levelBadge.textContent = 'Lv ' + level;
+    levelBadge.textContent = 'Lv ' + getLevel();
     onScreenEl.textContent = coinsOnScreen.length;
   }
 
-  function getLevel(){
-    return Math.floor(score / 10) + 1; // level increases every 10 points
-  }
-
-  function difficultyFactor(){
-    // returns 0..1 based on level progression
-    const level = getLevel();
-    return Math.min(1, level / 100); // caps at level 100 for scaling
-  }
-
-  function currentSpawnInterval(){
-    // reduce interval as difficulty increases
-    const f = difficultyFactor();
-    return Math.max(MIN_SPAWN_INTERVAL, BASE_SPAWN_INTERVAL - f * (BASE_SPAWN_INTERVAL - MIN_SPAWN_INTERVAL));
-  }
-
-  function currentBadChance(){
-    const f = difficultyFactor();
-    return BASE_BAD_CHANCE + f * (MAX_BAD_CHANCE - BASE_BAD_CHANCE);
-  }
-
   function randomPos(size){
-    const pad = 8;
-    const areaW = gameArea.clientWidth - size - pad;
-    const areaH = gameArea.clientHeight - size - pad;
-    const x = Math.max(pad, Math.random() * Math.max(1, areaW));
-    const y = Math.max(pad, Math.random() * Math.max(1, areaH));
+    const pad = 6;
+    const areaW = Math.max(100, gameArea.clientWidth - size - pad);
+    const areaH = Math.max(100, gameArea.clientHeight - size - pad);
+    const x = pad + Math.random()*areaW;
+    const y = pad + Math.random()*areaH;
     return {x,y};
+  }
+
+  function makeCoinElement(isBad){
+    const el = document.createElement('div');
+    el.className = 'coin ' + (isBad ? 'bad' : 'good');
+    el.style.width = (isBad?54:64) + 'px';
+    el.style.height = (isBad?54:64) + 'px';
+    el.setAttribute('role','button');
+    el.setAttribute('aria-label', isBad? 'bad coin' : 'gold coin');
+    // optional inner label / icon
+    el.innerHTML = isBad ? '−' : '🪙';
+    el.style.fontSize = isBad ? '22px' : '24px';
+    return el;
   }
 
   function spawnCoin(){
     if(paused) return;
     if(coinsOnScreen.length >= MAX_COINS_ON_SCREEN) return;
-    const badChance = currentBadChance();
-    const isBad = Math.random() < badChance;
-    const img = document.createElement('img');
-    img.className = 'coin ' + (isBad ? 'bad' : 'good');
-    img.draggable = false;
-    img.style.width = isBad ? '54px' : '64px';
-    img.style.height = 'auto';
-    img.style.opacity = 0;
-    img.style.transition = 'opacity .25s, transform .12s';
-
-    if(isBad){
-      // red coin (bad)
-      img.src = 'https://i.ibb.co/4Y9y1pR/red-coin.png';
-    } else {
-      // gold coin
-      img.src = 'https://i.ibb.co/3f7p3x3/coin.png';
-    }
-
-    const size = isBad ? 54 : 64;
-    const {x,y} = randomPos(size);
-    img.style.left = x + 'px';
-    img.style.top = y + 'px';
+    const isBad = Math.random() < currentBadChance();
+    const el = makeCoinElement(isBad);
+    const size = parseInt(el.style.width,10);
+    const pos = randomPos(size);
+    el.style.left = pos.x + 'px';
+    el.style.top = pos.y + 'px';
+    el.style.opacity = '0';
 
     // click handler
-    img.addEventListener('click', (ev) => {
+    const onClick = (ev) => {
       ev.stopPropagation();
       if(paused) return;
       if(isBad){
-        // penalty
         score = Math.max(0, score - Math.max(1, Math.floor(getLevel()/2)));
         try { badSound.play(); } catch(e){}
       } else {
         score++;
         try { ding.play(); } catch(e){}
       }
-      // small pop animation
-      img.style.transform = 'scale(1.15)';
-      setTimeout(()=>{ if(img) img.style.transform = ''; }, 120);
+      el.style.transform = 'scale(1.12)';
+      setTimeout(()=> el.style.transform = '', 120);
+      removeCoin(el);
+      afterScoreChange();
+    };
 
-      // remove immediately after collection
-      removeCoin(img);
-      updateAfterScore();
-    });
+    el.addEventListener('click', onClick);
 
-    // remove if user doesn't click after some time - auto despawn
-    const lifetime = Math.max(2500, 6000 - (getLevel()*20)); // coins live shorter at higher levels
-    const despawnTimeout = setTimeout(()=> { removeCoin(img); }, lifetime);
+    // lifetime / despawn
+    const life = Math.max(2200, 6000 - getLevel()*35);
+    const desp = setTimeout(()=> { removeCoin(el); }, life);
 
-    // append
-    gameArea.appendChild(img);
-    coinsOnScreen.push({el:img, bad:isBad, despawnTimeout});
-    // fade in
-    requestAnimationFrame(()=> { img.style.opacity = 1; });
-
+    gameArea.appendChild(el);
+    coinsOnScreen.push({el, desp});
+    requestAnimationFrame(()=> el.style.opacity = 1);
     updateUI();
   }
 
-  function removeCoin(img){
-    // find coin entry
-    const idx = coinsOnScreen.findIndex(c => c.el === img);
-    if(idx !== -1){
-      const c = coinsOnScreen[idx];
-      clearTimeout(c.despawnTimeout);
+  function removeCoin(el){
+    const idx = coinsOnScreen.findIndex(c=>c.el===el);
+    if(idx!==-1){
+      clearTimeout(coinsOnScreen[idx].desp);
       coinsOnScreen.splice(idx,1);
     }
-    if(img && img.parentNode) img.parentNode.removeChild(img);
+    if(el && el.parentNode) el.parentNode.removeChild(el);
     updateUI();
   }
 
-  function updateAfterScore(){
-    // update high score if needed
-    if(score > high){
-      high = score;
-      localStorage.setItem('dmd_high', high);
-    }
-    // every score change we might speed up spawning
+  function afterScoreChange(){
+    if(score > high){ high = score; localStorage.setItem('dmd_high', String(high)); }
     resetSpawnTimer();
     updateUI();
   }
 
   function resetSpawnTimer(){
     if(spawnTimer) clearInterval(spawnTimer);
-    spawnInterval = Math.round(currentSpawnInterval());
-    spawnTimer = setInterval(() => {
-      // spawn multiple coins as level increases
-      const level = getLevel();
-      const extra = Math.floor(level / 20); // every 20 levels add one coin spawn
-      for(let i=0;i<1+extra;i++) spawnCoin();
-    }, spawnInterval);
+    const interval = Math.round(currentSpawnInterval());
+    spawnTimer = setInterval(()=> {
+      const extra = Math.floor(getLevel()/25);
+      const times = Math.max(1, 1 + extra);
+      for(let i=0;i<times;i++) spawnCoin();
+    }, interval);
   }
 
   function startMovingCycle(){
-    // small movement jitter to make coins feel alive
+    if(moveTimer) clearInterval(moveTimer);
     moveTimer = setInterval(()=> {
-      coinsOnScreen.forEach(c => {
+      coinsOnScreen.forEach(c=>{
         const el = c.el;
-        const offset = Math.min(24, 6 + getLevel()*0.2);
-        const nx = Math.max(4, Math.min(gameArea.clientWidth - 64, parseFloat(el.style.left || 0) + (Math.random()*offset - offset/2)));
-        const ny = Math.max(4, Math.min(gameArea.clientHeight - 64, parseFloat(el.style.top || 0) + (Math.random()*offset - offset/2)));
+        const offset = Math.min(28, 5 + getLevel()*0.25);
+        const nx = Math.max(6, Math.min(gameArea.clientWidth - parseFloat(el.style.width||64), parseFloat(el.style.left||0) + (Math.random()*offset - offset/2)));
+        const ny = Math.max(6, Math.min(gameArea.clientHeight - parseFloat(el.style.height||64), parseFloat(el.style.top||0) + (Math.random()*offset - offset/2)));
         el.style.left = nx + 'px';
         el.style.top = ny + 'px';
       });
-    }, 700);
+    }, 600);
   }
 
   function startGame(){
-    // reset state
+    // reset
     score = 0;
     startTime = Date.now();
-    alive = true;
+    // clear any existing
+    coinsOnScreen.slice().forEach(c=> {
+      clearTimeout(c.desp); if(c.el && c.el.parentNode) c.el.parentNode.removeChild(c.el);
+    });
+    coinsOnScreen = [];
     paused = false;
-    // remove existing coins
-    coinsOnScreen.slice().forEach(c => removeCoin(c.el));
-    updateUI();
     resetSpawnTimer();
-    if(moveTimer) clearInterval(moveTimer);
     startMovingCycle();
+    updateUI();
   }
 
   function pauseToggle(){
@@ -301,55 +290,40 @@
       pauseBtn.textContent = 'Resume';
       clearInterval(spawnTimer);
       clearInterval(moveTimer);
-      // freeze despawn timers by clearing them (we won't restore)
-      coinsOnScreen.forEach(c => clearTimeout(c.despawnTimeout));
+      coinsOnScreen.forEach(c=> clearTimeout(c.desp));
     } else {
       pauseBtn.textContent = 'Pause';
-      // resume spawn & movement
       resetSpawnTimer();
       startMovingCycle();
     }
   }
 
   function restart(){
-    // clear timers and restart fresh
     if(spawnTimer) clearInterval(spawnTimer);
     if(moveTimer) clearInterval(moveTimer);
-    coinsOnScreen.slice().forEach(c => {
-      clearTimeout(c.despawnTimeout);
-      if(c.el && c.el.parentNode) c.el.parentNode.removeChild(c.el);
+    coinsOnScreen.slice().forEach(c=> {
+      clearTimeout(c.desp); if(c.el && c.el.parentNode) c.el.parentNode.removeChild(c.el);
     });
     coinsOnScreen = [];
     score = 0;
     startTime = Date.now();
-    updateUI();
     resetSpawnTimer();
     startMovingCycle();
+    updateUI();
   }
 
-  // UI buttons
   pauseBtn.addEventListener('click', pauseToggle);
-  restartBtn.addEventListener('click', () => { restart(); });
-  resetHS.addEventListener('click', () => {
-    if(confirm('Reset high score?')) {
-      localStorage.setItem('dmd_high', '0');
-      high = 0; highEl.textContent = 0;
-    }
+  restartBtn.addEventListener('click', restart);
+  resetHS.addEventListener('click', ()=> {
+    if(confirm('Reset high score?')) { localStorage.setItem('dmd_high','0'); high=0; highEl.textContent='0'; }
   });
 
-  // click outside removes tiny popups (not needed)
-  gameArea.addEventListener('click', () => { /* no op */ });
-
-  // start
+  // start everything
   startGame();
-
-  // update UI loop
   setInterval(updateUI, 500);
 
-  // responsive: recalc timers on resize
-  window.addEventListener('resize', () => {
-    // nothing heavy, coins will reposition gradually by jitter
-  });
+  // responsive behaviour (small screens)
+  window.addEventListener('resize', ()=> { /* coins reposition by movement cycle */ });
 
 })();
 </script>
