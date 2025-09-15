@@ -1,240 +1,94 @@
 
-  <!doctype html>
+  <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Click-to-Convert Coin Game</title>
-<style>
-  :root{--bg:#0b1220;--card:#0f1724;--muted:#9fb3d6;}
-  *{box-sizing:border-box}
-  body{margin:0;font-family:Inter,system-ui,Arial;background:
-    linear-gradient(180deg,#071428,#00121a);color:#e6eef8;display:flex;align-items:center;justify-content:center;height:100vh;padding:16px}
-  .wrap{width:100%;max-width:900px;display:grid;grid-template-columns:1fr 360px;gap:20px}
-  .panel{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.04));border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.04)}
-  .left{display:flex;flex-direction:column;align-items:center;gap:12px}
-  .tapArea{width:100%;height:420px;border-radius:12px;background:linear-gradient(180deg,#0f2130,#062233);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;user-select:none;border:3px solid rgba(255,255,255,0.03)}
-  .bigBtn{font-size:28px;padding:24px 36px;border-radius:14px;background:linear-gradient(180deg,#ffd666,#ffb84d);color:#111;border:0;box-shadow:0 8px 30px rgba(0,0,0,0.4);cursor:pointer}
-  .statsRow{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap}
-  .statBox{background:rgba(255,255,255,0.02);padding:10px 12px;border-radius:10px;min-width:120px;text-align:center}
-  .small{font-size:13px;color:var(--muted)}
-  progress{width:100%;height:14px;border-radius:8px;overflow:hidden}
-  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
-  input[type="number"]{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--muted)}
-  .controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-  button{padding:8px 10px;border-radius:8px;border:0;background:#1f6feb;color:#fff;cursor:pointer}
-  button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06)}
-  .coinRow{display:flex;gap:8px;align-items:center;justify-content:center}
-  .coinBadge{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,0.02)}
-  .goldDot{width:18px;height:18px;border-radius:50%;background:linear-gradient(180deg,#ffd666,#ffb84d);box-shadow:0 4px 10px rgba(0,0,0,0.4)}
-  .blueDot{width:18px;height:18px;border-radius:50%;background:linear-gradient(180deg,#6ec6ff,#3b9eff);box-shadow:0 4px 10px rgba(0,0,0,0.4)}
-  .mutedNote{font-size:12px;color:#9fb3d6;text-align:center;margin-top:6px}
-  @media(max-width:880px){ .wrap{grid-template-columns:1fr} }
-</style>
+  <meta charset="UTF-8">
+  <title>Tap Coin Collector</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      background: #222;
+      color: #fff;
+      padding: 15px;
+      margin: 0;
+    }
+    #game {
+      margin-top: 40px;
+    }
+    #tapButton {
+      font-size: 22px;
+      padding: 20px 50px;
+      border: none;
+      border-radius: 12px;
+      background: gold;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    #tapButton:active {
+      transform: scale(0.95);
+    }
+    .stats {
+      margin-top: 30px;
+      font-size: 20px;
+    }
+  </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="panel left">
-      <div class="tapArea" id="tapArea" title="Tap / Click here to add clicks">
-        <div style="text-align:center">
-          <div style="font-size:14px;color:#9fb3d6;margin-bottom:8px">Tap as fast as you like</div>
-          <button class="bigBtn" id="tapBtn">TAP</button>
-          <div style="height:12px"></div>
-          <div class="small">Clicks: <span id="clicks">0</span></div>
-          <div style="height:8px"></div>
-          <div style="width:80%;margin:0 auto">
-            <label>Progress to next regular coin</label>
-            <progress id="progReg" value="0" max="100"></progress>
-            <div style="height:8px"></div>
-            <label>Progress to next rare coin</label>
-            <progress id="progRare" value="0" max="100"></progress>
-          </div>
-        </div>
-      </div>
+  <h1>Tap Coin Collector 🪙</h1>
 
-      <div class="mutedNote">Tip: You can change thresholds on the right panel. Click many times to convert clicks → coins.</div>
-    </div>
-
-    <div class="panel">
-      <h3 style="margin:0 0 10px 0">Coin Converter Settings</h3>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div>
-          <label>Regular threshold (clicks → 1 gold coin)</label>
-          <input id="regularThreshold" type="number" value="1000" min="1" step="1">
-        </div>
-        <div>
-          <label>Rare threshold (clicks → 1 blue coin)</label>
-          <input id="rareThreshold" type="number" value="5000" min="1" step="1">
-        </div>
-      </div>
-
-      <div style="height:12px"></div>
-
-      <div class="statsRow">
-        <div class="statBox">
-          <div class="small">Gold coins</div>
-          <div style="font-size:20px;font-weight:700" id="goldCount">0</div>
-        </div>
-        <div class="statBox">
-          <div class="small">Rare coins</div>
-          <div style="font-size:20px;font-weight:700" id="rareCount">0</div>
-        </div>
-      </div>
-
-      <div style="height:10px"></div>
-      <div class="coinRow">
-        <div class="coinBadge"><div class="goldDot"></div><div class="small">Gold coin: regular reward</div></div>
-        <div class="coinBadge"><div class="blueDot"></div><div class="small">Blue coin: rare reward</div></div>
-      </div>
-
-      <div style="height:12px"></div>
-      <div class="controls">
-        <button id="resetBtn" class="ghost">Reset all</button>
-        <button id="saveBtn" class="ghost">Save settings</button>
-        <button id="soundToggle">Sound: On</button>
-      </div>
-
-      <div style="height:12px"></div>
-      <div style="font-size:13px;color:#9fb3d6">
-        Clicks are saved locally in your browser so you keep progress. Rare coin is given when clicks reach rare threshold (it consumes clicks).
-      </div>
+  <div id="game">
+    <button id="tapButton">Tap Me!</button>
+    <div class="stats">
+      <p>Total Taps: <span id="taps">0</span></p>
+      <p>Gold Coins 🟡: <span id="gold">0</span></p>
+      <p>Blue Coins 🔵: <span id="blue">0</span></p>
     </div>
   </div>
 
-  <!-- sounds -->
-  <audio id="sndCoin"><source src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg" type="audio/ogg"></audio>
-  <audio id="sndRare"><source src="https://actions.google.com/sounds/v1/cartoon/metal_hit.ogg" type="audio/ogg"></audio>
+  <script>
+    // Fixed thresholds
+    const goldThreshold = 1000; 
+    const blueThreshold = 5000;
 
-<script>
-(function(){
-  // state
-  const clicksEl = document.getElementById('clicks');
-  const progReg = document.getElementById('progReg');
-  const progRare = document.getElementById('progRare');
-  const goldCountEl = document.getElementById('goldCount');
-  const rareCountEl = document.getElementById('rareCount');
-  const regularThresholdInput = document.getElementById('regularThreshold');
-  const rareThresholdInput = document.getElementById('rareThreshold');
-  const tapArea = document.getElementById('tapArea');
-  const tapBtn = document.getElementById('tapBtn');
-  const resetBtn = document.getElementById('resetBtn');
-  const saveBtn = document.getElementById('saveBtn');
-  const soundToggle = document.getElementById('soundToggle');
-  const sndCoin = document.getElementById('sndCoin');
-  const sndRare = document.getElementById('sndRare');
+    // Game state
+    let taps = 0;
+    let gold = 0;
+    let blue = 0;
 
-  let clicks = parseInt(localStorage.getItem('clicks')||'0',10);
-  let gold = parseInt(localStorage.getItem('gold')||'0',10);
-  let rare = parseInt(localStorage.getItem('rare')||'0',10);
-  let regularThreshold = parseInt(localStorage.getItem('regularThreshold')||regularThresholdInput.value,10);
-  let rareThreshold = parseInt(localStorage.getItem('rareThreshold')||rareThresholdInput.value,10);
-  let soundOn = localStorage.getItem('soundOn')!== 'false';
+    const tapsEl = document.getElementById("taps");
+    const goldEl = document.getElementById("gold");
+    const blueEl = document.getElementById("blue");
+    const button = document.getElementById("tapButton");
 
-  // init UI
-  clicksEl.textContent = clicks;
-  goldCountEl.textContent = gold;
-  rareCountEl.textContent = rare;
-  regularThresholdInput.value = regularThreshold;
-  rareThresholdInput.value = rareThreshold;
-  soundToggle.textContent = soundOn ? 'Sound: On' : 'Sound: Off';
+    button.addEventListener("click", () => {
+      taps++;
 
-  function saveState(){
-    localStorage.setItem('clicks', String(clicks));
-    localStorage.setItem('gold', String(gold));
-    localStorage.setItem('rare', String(rare));
-    localStorage.setItem('regularThreshold', String(regularThreshold));
-    localStorage.setItem('rareThreshold', String(rareThreshold));
-    localStorage.setItem('soundOn', String(soundOn));
-  }
+      // Check gold coin
+      if (taps % goldThreshold === 0) {
+        gold++;
+        goldEl.textContent = gold;
+      }
 
-  function updateProgress(){
-    progReg.max = regularThreshold;
-    progReg.value = clicks % regularThreshold;
-    progRare.max = rareThreshold;
-    progRare.value = clicks % rareThreshold;
-  }
+      // Check blue coin
+      if (taps % blueThreshold === 0) {
+        blue++;
+        blueEl.textContent = blue;
+      }
 
-  function tryConvert(){
-    // If clicks reach rare threshold first -> award rare coin (consume clicks)
-    while(clicks >= rareThreshold){
-      clicks -= rareThreshold;
-      rare++;
-      if(soundOn) try{ sndRare.play(); }catch(e){}
-    }
-    // Then convert remaining to gold coins
-    while(clicks >= regularThreshold){
-      clicks -= regularThreshold;
-      gold++;
-      if(soundOn) try{ sndCoin.play(); }catch(e){}
-    }
-    clicksEl.textContent = clicks;
-    goldCountEl.textContent = gold;
-    rareCountEl.textContent = rare;
-    updateProgress();
-    saveState();
-  }
-
-  // tap handler
-  function onTap(){
-    clicks++;
-    clicksEl.textContent = clicks;
-    updateProgress();
-    // optionally auto-convert when thresholds hit
-    if(clicks >= rareThreshold || clicks >= regularThreshold){
-      tryConvert();
-    }
-  }
-
-  tapArea.addEventListener('click', onTap);
-  tapBtn.addEventListener('click', onTap);
-
-  // settings save/reset
-  saveBtn.addEventListener('click', ()=>{
-    regularThreshold = Math.max(1, parseInt(regularThresholdInput.value,10)||1);
-    rareThreshold = Math.max(1, parseInt(rareThresholdInput.value,10)||1);
-    // ensure rare > regular ideally
-    if(rareThreshold <= regularThreshold) rareThreshold = regularThreshold * 5;
-    regularThresholdInput.value = regularThreshold;
-    rareThresholdInput.value = rareThreshold;
-    saveState();
-    updateProgress();
-    alert('Settings saved.');
-  });
-
-  resetBtn.addEventListener('click', ()=>{
-    if(!confirm('Reset clicks and coins?')) return;
-    clicks = 0; gold = 0; rare = 0;
-    clicksEl.textContent = clicks;
-    goldCountEl.textContent = gold;
-    rareCountEl.textContent = rare;
-    updateProgress();
-    saveState();
-  });
-
-  soundToggle.addEventListener('click', ()=>{
-    soundOn = !soundOn;
-    soundToggle.textContent = soundOn ? 'Sound: On' : 'Sound: Off';
-    saveState();
-  });
-
-  // init progress & convert if applicable
-  updateProgress();
-  tryConvert();
-
-  // keyboard shortcut: press space to tap (when not typing)
-  window.addEventListener('keydown', e=>{
-    if(e.code === 'Space'){
-      e.preventDefault();
-      onTap();
-    }
-  });
-
-})();
-</script>
+      tapsEl.textContent = taps;
+    });
+  </script>
 </body>
 </html>
+
           
 
     
     
+
