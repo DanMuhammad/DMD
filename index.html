@@ -1,5 +1,6 @@
 
-  <!DOCTYPE html>
+  
+    <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -7,202 +8,171 @@
   <style>
     body {
       margin: 0;
+      overflow: hidden;
+      background: #87CEEB;
       font-family: Arial, sans-serif;
-      background: #111;
       color: #fff;
       text-align: center;
     }
-    h1 { margin: 10px 0; }
-    #stats { margin: 10px; font-size: 16px; }
     #gameArea {
       position: relative;
-      margin: 10px auto;
-      width: 90%;
-      max-width: 480px;
-      height: 400px;
-      background: linear-gradient(#222, #333);
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(#87CEEB, #4CAF50);
       overflow: hidden;
-      border: 2px solid #555;
-      border-radius: 10px;
     }
-    .player {
+    #player {
       position: absolute;
-      bottom: 20px;
+      bottom: 50px;
       left: 50px;
       width: 40px;
-      height: 40px;
-      background: dodgerblue;
-      border-radius: 5px;
+      height: 60px;
+      background: blue;
+      border-radius: 8px;
     }
     .coin {
       position: absolute;
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
+      bottom: 60px;
+      width: 30px;
+      height: 30px;
       background: gold;
+      border-radius: 50%;
     }
     .obstacle {
       position: absolute;
-      width: 30px;
-      height: 30px;
+      bottom: 50px;
+      width: 40px;
+      height: 40px;
       background: red;
-      bottom: 20px;
     }
-    button {
-      margin: 5px;
-      padding: 6px 12px;
-      border: none;
+    #stats {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.5);
+      padding: 8px 16px;
       border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
+      font-size: 16px;
     }
-    #pauseBtn { background: #555; color: #fff; }
-    #restartBtn { background: #2ecc71; color: #fff; }
   </style>
 </head>
 <body>
-  <h1>🏃 Runner — Endless Coin Collector</h1>
-  <div id="stats">
-    Score: <span id="score">0</span> |
-    High: <span id="highScore">0</span> |
-    Level: <span id="level">1</span> |
-    Lives: <span id="lives">❤️❤️❤️❤️</span>
-  </div>
   <div id="gameArea">
-    <div class="player" id="player"></div>
-  </div>
-  <div>
-    <button id="pauseBtn">Pause</button>
-    <button id="restartBtn">Restart</button>
+    <div id="player"></div>
+    <div id="stats">
+      Score: <span id="score">0</span> |
+      Lives: <span id="lives">❤️❤️❤️</span>
+    </div>
   </div>
 
   <script>
     const gameArea = document.getElementById("gameArea");
     const player = document.getElementById("player");
     const scoreEl = document.getElementById("score");
-    const highScoreEl = document.getElementById("highScore");
-    const levelEl = document.getElementById("level");
     const livesEl = document.getElementById("lives");
 
-    let score = 0, highScore = 0, level = 1, lives = 4;
-    let playing = true, speed = 3, gameLoop;
+    let score = 0;
+    let lives = 3;
+    let jumping = false;
+    let velocityY = 0;
+    const gravity = 0.9;
 
-    // player movement
-    let posX = 50;
-    document.addEventListener("keydown", e=>{
-      if(!playing) return;
-      if(e.key==="ArrowRight") posX += 20;
-      if(e.key==="ArrowLeft") posX -= 20;
-      if(posX < 0) posX = 0;
-      if(posX > gameArea.clientWidth-40) posX = gameArea.clientWidth-40;
-      player.style.left = posX+"px";
+    document.addEventListener("keydown", e => {
+      if (e.code === "Space" && !jumping) {
+        velocityY = 18;
+        jumping = true;
+      }
     });
 
-    function spawnCoin(){
+    function updatePlayer() {
+      let bottom = parseInt(player.style.bottom) || 50;
+      bottom += velocityY;
+      velocityY -= gravity;
+
+      if (bottom <= 50) {
+        bottom = 50;
+        jumping = false;
+      }
+      player.style.bottom = bottom + "px";
+    }
+
+    function spawnCoin() {
       const coin = document.createElement("div");
       coin.className = "coin";
-      coin.style.top = "0px";
-      coin.style.left = Math.random()*(gameArea.clientWidth-24)+"px";
+      coin.style.left = window.innerWidth + "px";
+      coin.style.bottom = 60 + Math.random() * 120 + "px";
       gameArea.appendChild(coin);
 
-      let fall = setInterval(()=>{
-        if(!playing){ clearInterval(fall); return; }
-        let top = parseInt(coin.style.top);
-        coin.style.top = top+speed+"px";
+      let interval = setInterval(() => {
+        coin.style.left = (parseInt(coin.style.left) - 5) + "px";
 
-        // collision check
-        const pRect = player.getBoundingClientRect();
-        const cRect = coin.getBoundingClientRect();
-        if(!(pRect.right < cRect.left || 
-             pRect.left > cRect.right || 
-             pRect.bottom < cRect.top || 
-             pRect.top > cRect.bottom)){
+        // Collision with player
+        const playerRect = player.getBoundingClientRect();
+        const coinRect = coin.getBoundingClientRect();
+        if (
+          playerRect.left < coinRect.right &&
+          playerRect.right > coinRect.left &&
+          playerRect.top < coinRect.bottom &&
+          playerRect.bottom > coinRect.top
+        ) {
           score += 10;
-          if(score>highScore) highScore=score;
           scoreEl.textContent = score;
-          highScoreEl.textContent = highScore;
           coin.remove();
-          clearInterval(fall);
+          clearInterval(interval);
         }
 
-        if(top>gameArea.clientHeight-20){ coin.remove(); clearInterval(fall); }
-      },30);
+        if (parseInt(coin.style.left) < -30) {
+          coin.remove();
+          clearInterval(interval);
+        }
+      }, 30);
     }
 
-    function spawnObstacle(){
-      const obs = document.createElement("div");
-      obs.className = "obstacle";
-      obs.style.left = Math.random()*(gameArea.clientWidth-30)+"px";
-      obs.style.top = "0px";
-      gameArea.appendChild(obs);
+    function spawnObstacle() {
+      const obstacle = document.createElement("div");
+      obstacle.className = "obstacle";
+      obstacle.style.left = window.innerWidth + "px";
+      gameArea.appendChild(obstacle);
 
-      let fall = setInterval(()=>{
-        if(!playing){ clearInterval(fall); return; }
-        let top = parseInt(obs.style.top);
-        obs.style.top = top+speed+"px";
+      let interval = setInterval(() => {
+        obstacle.style.left = (parseInt(obstacle.style.left) - 6) + "px";
 
-        const pRect = player.getBoundingClientRect();
-        const oRect = obs.getBoundingClientRect();
-        if(!(pRect.right < oRect.left || 
-             pRect.left > oRect.right || 
-             pRect.bottom < oRect.top || 
-             pRect.top > oRect.bottom)){
+        const playerRect = player.getBoundingClientRect();
+        const obsRect = obstacle.getBoundingClientRect();
+        if (
+          playerRect.left < obsRect.right &&
+          playerRect.right > obsRect.left &&
+          playerRect.top < obsRect.bottom &&
+          playerRect.bottom > obsRect.top
+        ) {
           lives--;
           updateLives();
-          obs.remove();
-          clearInterval(fall);
-          if(lives<=0){ gameOver(); }
+          obstacle.remove();
+          clearInterval(interval);
+          if (lives <= 0) {
+            alert("Game Over! Score: " + score);
+            window.location.reload();
+          }
         }
 
-        if(top>gameArea.clientHeight-20){ obs.remove(); clearInterval(fall); }
-      },30);
+        if (parseInt(obstacle.style.left) < -40) {
+          obstacle.remove();
+          clearInterval(interval);
+        }
+      }, 30);
     }
 
-    function updateLives(){
-      livesEl.textContent = "❤️".repeat(lives) + "🤍".repeat(4-lives);
+    function updateLives() {
+      livesEl.textContent = "❤️".repeat(lives) + "🤍".repeat(3 - lives);
     }
 
-    function levelUp(){
-      level++;
-      levelEl.textContent = level;
-      if(speed < 10) speed++;
-    }
-
-    function gameStart(){
-      gameLoop = setInterval(()=>{
-        spawnCoin();
-        if(Math.random()<0.3) spawnObstacle();
-        if(score>0 && score%50===0){ levelUp(); }
-      }, 1000);
-    }
-
-    function gameOver(){
-      playing=false;
-      clearInterval(gameLoop);
-      alert("Game Over! Final Score: "+score);
-    }
-
-    document.getElementById("pauseBtn").onclick = ()=>{
-      playing=!playing;
-      if(playing){ gameStart(); } else { clearInterval(gameLoop); }
-    };
-    document.getElementById("restartBtn").onclick = ()=>{
-      clearInterval(gameLoop);
-      score=0; level=1; lives=4; speed=3; playing=true;
-      scoreEl.textContent=score;
-      levelEl.textContent=level;
-      updateLives();
-      gameArea.querySelectorAll(".coin,.obstacle").forEach(el=>el.remove());
-      gameStart();
-    };
-
-    // init
-    updateLives();
-    gameStart();
+    setInterval(updatePlayer, 30);
+    setInterval(spawnCoin, 2000);
+    setInterval(spawnObstacle, 3000);
   </script>
 </body>
 </html>
 
-      
 
 
