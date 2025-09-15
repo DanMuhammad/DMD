@@ -1,165 +1,288 @@
-<!DOCTYPE html>
+
+ <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Endless Coin Collector</title>
-  <style>
-    body {
-      margin:0;
-      font-family: Arial, sans-serif;
-      background:#111;
-      color:#fff;
-      text-align:center;
-    }
-    h1 {margin:10px 0;}
-    #info {font-size:14px; margin-bottom:10px; color:#ccc;}
-    #stats {margin:10px;}
-    #gameArea {
-      position:relative;
-      margin:10px auto;
-      width:90%;
-      max-width:480px;
-      height:520px;
-      background:linear-gradient(#222,#333);
-      overflow:hidden;
-      border:2px solid #555;
-      border-radius:10px;
-    }
-    .coin {
-      position:absolute;
-      width:48px;
-      height:48px;
-      cursor:pointer;
-      border-radius:50%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-weight:bold;
-      font-size:20px;
-    }
-    .gold {
-      background:gold;
-      color:#111;
-    }
-    .red {
-      background:red;
-      color:#fff;
-    }
-    button {
-      margin:5px;
-      padding:6px 12px;
-      border:none;
-      border-radius:6px;
-      cursor:pointer;
-      font-weight:bold;
-    }
-    #pauseBtn {background:#555; color:#fff;}
-    #restartBtn {background:#2ecc71; color:#fff;}
-    #resetHSBtn {background:#e74c3c; color:#fff;}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Endless Coin Collector</title>
+<style>
+  :root{
+    --bg1:#071428; --bg2:#00121a; --panel:#0b1221; --text:#e6eef8;
+    --gold-start:#ffd666; --gold-end:#ffb84d; --bad:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; font-family:Inter, system-ui, Arial, Helvetica, sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    background: linear-gradient(180deg, var(--bg1), var(--bg2));
+    color:var(--text); padding:20px;
+  }
+  .wrap{width:100%; max-width:900px; display:grid; grid-template-columns:320px 1fr; gap:18px;}
+  .panel{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04)); border-radius:12px; padding:14px; border:1px solid rgba(255,255,255,0.04);}
+  .left{min-height:480px; display:flex;flex-direction:column; gap:10px}
+  h1{margin:0 0 6px 0;font-size:20px}
+  .stat{display:flex;justify-content:space-between;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.02)}
+  .big{font-size:22px;font-weight:700}
+  #gameArea{position:relative;background:linear-gradient(180deg,#071028,#091427); border-radius:10px; height:520px; overflow:hidden; border:1px solid rgba(255,255,255,0.03)}
+  .coin{
+    position:absolute; width:64px; height:64px; cursor:pointer; user-select:none;
+    transition: transform .12s ease, opacity .25s ease, left .2s linear, top .2s linear;
+    will-change:left,top,transform,opacity; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-weight:700; color:#1b1b1b; text-shadow:0 1px 0 rgba(255,255,255,0.12);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.45);
+  }
+  .coin.good{
+    background:
+      radial-gradient(circle at 35% 28%, #fff7c9 0%, rgba(255,255,255,0) 20%),
+      radial-gradient(circle at 60% 60%, rgba(255,200,50,0.85), rgba(255,140,30,0.95) 60%),
+      linear-gradient(180deg,var(--gold-start),var(--gold-end));
+    border: 1px solid rgba(255,255,255,0.12);
+    color:#1b1b1b;
+  }
+  .coin.bad{
+    background:
+      radial-gradient(circle at 35% 28%, #fff0f0 0%, rgba(255,255,255,0) 20%),
+      linear-gradient(180deg,#ff8a8a,#ff5b5b,#ff3737);
+    border: 1px solid rgba(0,0,0,0.15);
+    color:#fff;
+  }
+  .controls{display:flex; gap:8px; margin-top:6px}
+  button{padding:8px 12px;border-radius:8px;border:0;background:#1f6feb;color:#fff;cursor:pointer}
+  button.alt{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+  .footer-note{font-size:12px;color:#9fb3d6;margin-top:8px}
+  .top-row{display:flex;gap:8px;align-items:center; justify-content:space-between}
+  .level-badge{background:linear-gradient(90deg,#ffd166,#ffb86b);color:#0b1221;padding:6px 10px;border-radius:999px;font-weight:700}
+  @media(max-width:880px){ .wrap{grid-template-columns:1fr} .left{order:2} }
+</style>
 </head>
 <body>
-  <h1>🎮 Endless Coin Collector</h1>
-  <div id="info">
-    Wannan wasa <b>ba shi da iyaka</b>!  
-    Yayin da kake tara maki, <b>wahala tana ƙaruwa</b>.  
-    Danna zinariya (gold) don samun maki ✨,  
-    ku guji ja (red) saboda yana cire maka maki ❌.
+  <div class="wrap">
+    <div class="panel left">
+      <div class="top-row">
+        <div>
+          <h1>Endless Coin Collector</h1>
+          <div style="font-size:13px;color:#bcd3ea">No limits — difficulty increases as you score</div>
+        </div>
+        <div class="level-badge" id="levelBadge">Lv 1</div>
+      </div>
+
+      <div style="margin-top:10px">
+        <div class="stat"><div>Score</div><div class="big" id="score">0</div></div>
+        <div style="height:8px"></div>
+        <div class="stat"><div>High Score</div><div id="high">0</div></div>
+        <div style="height:8px"></div>
+        <div class="stat"><div>Time survived</div><div id="time">0s</div></div>
+        <div style="height:8px"></div>
+        <div class="stat"><div>Coins on screen</div><div id="onScreen">0</div></div>
+
+        <div class="controls">
+          <button id="pauseBtn">Pause</button>
+          <button id="restartBtn" class="alt">Restart</button>
+          <button id="resetHS" class="alt">Reset HS</button>
+        </div>
+
+        <div class="footer-note">
+          Tip: Tap or click gold coins to gain points. Avoid red coins (they subtract). Difficulty ramps up every 10 points.
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="display:flex;flex-direction:column;gap:10px">
+      <div id="gameArea" aria-label="game area"></div>
+      <div style="display:flex;gap:12px;align-items:center;justify-content:flex-end;margin-top:8px">
+        <div style="font-size:13px;color:#bcd3ea">Controls: Tap / Click coins</div>
+      </div>
+    </div>
   </div>
-  <div id="stats">
-    Level: <span id="level">1</span> |
-    Score: <span id="score">0</span> |
-    High Score: <span id="highScore">0</span> |
-    Time: <span id="time">0s</span>
-  </div>
-  <div id="gameArea"></div>
-  <div>
-    <button id="pauseBtn">Pause</button>
-    <button id="restartBtn">Restart</button>
-    <button id="resetHSBtn">Reset HS</button>
-  </div>
 
-  <!-- Sauti -->
-  <audio id="soundGood">
-    <source src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg" type="audio/ogg">
-  </audio>
-  <audio id="soundBad">
-    <source src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg" type="audio/ogg">
-  </audio>
+<script>
+(() => {
+  const BASE_SPAWN_INTERVAL = 1400;
+  const MIN_SPAWN_INTERVAL = 380;
+  const BASE_BAD_CHANCE = 0.08;
+  const MAX_BAD_CHANCE = 0.33;
+  const MAX_COINS_ON_SCREEN = 9;
 
-  <script>
-    const gameArea = document.getElementById("gameArea");
-    const scoreEl = document.getElementById("score");
-    const highScoreEl = document.getElementById("highScore");
-    const levelEl = document.getElementById("level");
-    const timeEl = document.getElementById("time");
+  const gameArea = document.getElementById('gameArea');
+  const scoreEl = document.getElementById('score');
+  const highEl = document.getElementById('high');
+  const timeEl = document.getElementById('time');
+  const levelBadge = document.getElementById('levelBadge');
+  const onScreenEl = document.getElementById('onScreen');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const restartBtn = document.getElementById('restartBtn');
+  const resetHS = document.getElementById('resetHS');
 
-    const soundGood = document.getElementById("soundGood");
-    const soundBad = document.getElementById("soundBad");
+  let score = 0;
+  let high = parseInt(localStorage.getItem('dmd_high')||'0',10);
+  highEl.textContent = high;
+  let startTime = Date.now();
+  let spawnTimer = null;
+  let moveTimer = null;
+  let paused = false;
+  let coinsOnScreen = [];
 
-    let score = 0, highScore = 0, level = 1, time = 0, playing = true, timer;
+  const ding = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg'); ding.volume = 0.9;
+  const buzz = new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg'); buzz.volume = 0.9;
 
-    function spawnCoin(){
-      if(!playing) return;
-      const coin = document.createElement("div");
-      const isBad = Math.random() < 0.2;
-      coin.className = "coin " + (isBad ? "red" : "gold");
-      coin.style.top = Math.random() * (gameArea.clientHeight-50) + "px";
-      coin.style.left = Math.random() * (gameArea.clientWidth-50) + "px";
-      coin.textContent = isBad ? "−" : "+";
-      coin.onclick = () => {
-        if(isBad){
-          score = Math.max(0, score-5);
-          soundBad.play();
-        } else {
-          score += 10;
-          soundGood.play();
-        }
-        if(score > highScore){ highScore = score; }
-        scoreEl.textContent = score;
-        highScoreEl.textContent = highScore;
-        gameArea.removeChild(coin);
-      };
-      gameArea.appendChild(coin);
-      setTimeout(()=>{ if(gameArea.contains(coin)) gameArea.removeChild(coin); }, 2500);
+  function getLevel(){ return Math.floor(score/10)+1; }
+  function difficultyFactor(){ return Math.min(1, getLevel()/100); }
+  function currentSpawnInterval(){ return Math.max(MIN_SPAWN_INTERVAL, BASE_SPAWN_INTERVAL - difficultyFactor()*(BASE_SPAWN_INTERVAL-MIN_SPAWN_INTERVAL)); }
+  function currentBadChance(){ return BASE_BAD_CHANCE + difficultyFactor()*(MAX_BAD_CHANCE-BASE_BAD_CHANCE); }
+
+  function updateUI(){
+    scoreEl.textContent = score;
+    highEl.textContent = high;
+    timeEl.textContent = Math.floor((Date.now()-startTime)/1000) + 's';
+    levelBadge.textContent = 'Lv ' + getLevel();
+    onScreenEl.textContent = coinsOnScreen.length;
+  }
+
+  function randomPos(size){
+    const pad = 6;
+    const areaW = Math.max(100, gameArea.clientWidth - size - pad);
+    const areaH = Math.max(100, gameArea.clientHeight - size - pad);
+    const x = pad + Math.random()*areaW;
+    const y = pad + Math.random()*areaH;
+    return {x,y};
+  }
+
+  function makeCoinElement(isBad){
+    const el = document.createElement('div');
+    el.className = 'coin ' + (isBad ? 'bad' : 'good');
+    el.style.width = (isBad?54:64) + 'px';
+    el.style.height = (isBad?54:64) + 'px';
+    el.setAttribute('role','button');
+    el.setAttribute('aria-label', isBad? 'bad coin' : 'gold coin');
+    el.innerHTML = isBad ? '−' : '🪙';
+    el.style.fontSize = isBad ? '22px' : '24px';
+    return el;
+  }
+
+  function spawnCoin(){
+    if(paused) return;
+    if(coinsOnScreen.length >= MAX_COINS_ON_SCREEN) return;
+    const isBad = Math.random() < currentBadChance();
+    const el = makeCoinElement(isBad);
+    const size = parseInt(el.style.width,10);
+    const pos = randomPos(size);
+    el.style.left = pos.x + 'px';
+    el.style.top = pos.y + 'px';
+    el.style.opacity = '0';
+
+    const onClick = (ev) => {
+      ev.stopPropagation();
+      if(paused) return;
+      if(isBad){
+        score = Math.max(0, score - Math.max(1, Math.floor(getLevel()/2)));
+        try { buzz.play(); } catch(e) {}
+      } else {
+        score++;
+        try { ding.play(); } catch(e) {}
+      }
+      el.style.transform = 'scale(1.12)';
+      setTimeout(()=> el.style.transform = '', 120);
+      removeCoin(el);
+      afterScoreChange();
+    };
+
+    el.addEventListener('click', onClick);
+
+    const life = Math.max(2200, 6000 - getLevel()*35);
+    const desp = setTimeout(()=> { removeCoin(el); }, life);
+
+    gameArea.appendChild(el);
+    coinsOnScreen.push({el, desp});
+    requestAnimationFrame(()=> el.style.opacity = 1);
+    updateUI();
+  }
+
+  function removeCoin(el){
+    const idx = coinsOnScreen.findIndex(c=>c.el===el);
+    if(idx!==-1){
+      clearTimeout(coinsOnScreen[idx].desp);
+      coinsOnScreen.splice(idx,1);
     }
+    if(el && el.parentNode) el.parentNode.removeChild(el);
+    updateUI();
+  }
 
-    function gameLoop(){
-      timer = setInterval(()=>{
-        time++;
-        timeEl.textContent = time+"s";
-        if(time % 10 === 0){
-          level++;
-          levelEl.textContent = level;
-        }
-        spawnCoin();
-      }, 1000);
+  function afterScoreChange(){
+    if(score > high){ high = score; localStorage.setItem('dmd_high', String(high)); }
+    resetSpawnTimer();
+    updateUI();
+  }
+
+  function resetSpawnTimer(){
+    if(spawnTimer) clearInterval(spawnTimer);
+    const interval = Math.round(currentSpawnInterval());
+    spawnTimer = setInterval(()=> {
+      const extra = Math.floor(getLevel()/25);
+      const times = Math.max(1, 1 + extra);
+      for(let i=0;i<times;i++) spawnCoin();
+    }, interval);
+  }
+
+  function startMovingCycle(){
+    if(moveTimer) clearInterval(moveTimer);
+    moveTimer = setInterval(()=> {
+      coinsOnScreen.forEach(c=>{
+        const el = c.el;
+        const offset = Math.min(28, 5 + getLevel()*0.25);
+        const nx = Math.max(6, Math.min(gameArea.clientWidth - parseFloat(el.style.width||64), parseFloat(el.style.left||0) + (Math.random()*offset - offset/2)));
+        const ny = Math.max(6, Math.min(gameArea.clientHeight - parseFloat(el.style.height||64), parseFloat(el.style.top||0) + (Math.random()*offset - offset/2)));
+        el.style.left = nx + 'px';
+        el.style.top = ny + 'px';
+      });
+    }, 600);
+  }
+
+  function startGame(){
+    score = 0;
+    startTime = Date.now();
+    coinsOnScreen.slice().forEach(c=> { clearTimeout(c.desp); if(c.el && c.el.parentNode) c.el.parentNode.removeChild(c.el); });
+    coinsOnScreen = [];
+    paused = false;
+    resetSpawnTimer();
+    startMovingCycle();
+    updateUI();
+  }
+
+  function pauseToggle(){
+    paused = !paused;
+    if(paused){
+      pauseBtn.textContent = 'Resume';
+      clearInterval(spawnTimer);
+      clearInterval(moveTimer);
+      coinsOnScreen.forEach(c=> clearTimeout(c.desp));
+    } else {
+      pauseBtn.textContent = 'Pause';
+      resetSpawnTimer();
+  startMovingCycle();
     }
+  }
 
-    document.getElementById("pauseBtn").onclick = ()=>{
-      playing = !playing;
-      if(playing){ gameLoop(); } else { clearInterval(timer); }
-    };
-    document.getElementById("restartBtn").onclick = ()=>{
-      clearInterval(timer);
-      score = 0; time = 0; level = 1;
-      scoreEl.textContent = score;
-      levelEl.textContent = level;
-      timeEl.textContent = time+"s";
-      gameArea.innerHTML="";
-      playing = true;
-      gameLoop();
-    };
-    document.getElementById("resetHSBtn").onclick = ()=>{
-      highScore = 0;
-      highScoreEl.textContent = highScore;
-    };
+  function restart(){
+    if(spawnTimer) clearInterval(spawnTimer);
+    if(moveTimer) clearInterval(moveTimer);
+    coinsOnScreen.slice().forEach(c=> { clearTimeout(c.desp); if(c.el && c.el.parentNode) c.el.parentNode.removeChild(c.el); });
+    coinsOnScreen = [];
+    score = 0;
+    startTime = Date.now();
+    resetSpawnTimer();
+    startMovingCycle();
+    updateUI();
+  }
 
-    // Start game
-    gameLoop();
-  </script>
+  pauseBtn.addEventListener('click', pauseToggle);
+  restartBtn.addEventListener('click', restart);
+  resetHS.addEventListener('click', ()=> { if(confirm('Reset high score?')) { localStorage.setItem('dmd_high','0'); high=0; highEl.textContent='0'; } });
+
+  // start everything
+  startGame();
+  setInterval(updateUI, 500);
+  window.addEventListener('resize', ()=> {});
+})();
+</script>
 </body>
-            </html>
-
-  
-        
+</html>       
