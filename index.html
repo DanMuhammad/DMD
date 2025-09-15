@@ -1,418 +1,208 @@
-<!doctype html>
+
+  <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Runner — Endless Coin Collector</title>
-<style>
-  :root{
-    --bg:#1b2b3a; --ground:#2b3b4a; --panel:#0f1720; --text:#e6eef8;
-    --accent:#ffd166; --danger:#ff6b6b;
-  }
-  *{box-sizing:border-box}
-  body{
-    margin:0; min-height:100vh; font-family:Inter, system-ui, Arial, Helvetica, sans-serif;
-    display:flex; align-items:center; justify-content:center;
-    background: linear-gradient(180deg, #0b1220 0%, #071428 100%);
-    color:var(--text); padding:20px;
-  }
-  .container{width:100%; max-width:900px;}
-  .top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
-  h1{margin:0;font-size:20px}
-  .stats{display:flex;gap:12px;align-items:center}
-  .badge{background:rgba(255,255,255,0.03);padding:8px 10px;border-radius:8px;font-weight:700}
-  #uiControls{display:flex;gap:8px}
-  button{background:#1f6feb;color:#fff;border:0;padding:8px 10px;border-radius:8px;cursor:pointer}
-  button.alt{background:transparent;border:1px solid rgba(255,255,255,0.06)}
-  .game-wrap{background:linear-gradient(180deg,#06111a 0%,#071428 100%);border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.03)}
-  canvas{display:block;background:linear-gradient(180deg,#69b7ff08,#00000000); border-radius:8px; width:100%; height:auto;}
-  .legend{font-size:13px;color:#9fb3d6;margin-top:8px}
-  .controls-row{margin-top:8px;display:flex;gap:8px;align-items:center}
-  @media(max-width:640px){ h1{font-size:16px} .badge{padding:6px 8px} }
-</style>
+  <meta charset="UTF-8">
+  <title>Runner — Endless Coin Collector</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      text-align: center;
+    }
+    h1 { margin: 10px 0; }
+    #stats { margin: 10px; font-size: 16px; }
+    #gameArea {
+      position: relative;
+      margin: 10px auto;
+      width: 90%;
+      max-width: 480px;
+      height: 400px;
+      background: linear-gradient(#222, #333);
+      overflow: hidden;
+      border: 2px solid #555;
+      border-radius: 10px;
+    }
+    .player {
+      position: absolute;
+      bottom: 20px;
+      left: 50px;
+      width: 40px;
+      height: 40px;
+      background: dodgerblue;
+      border-radius: 5px;
+    }
+    .coin {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: gold;
+    }
+    .obstacle {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background: red;
+      bottom: 20px;
+    }
+    button {
+      margin: 5px;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    #pauseBtn { background: #555; color: #fff; }
+    #restartBtn { background: #2ecc71; color: #fff; }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <div class="top">
-      <h1>Runner — Endless Coin Collector</h1>
-      <div class="stats">
-        <div class="badge">Score: <span id="score">0</span></div>
-        <div class="badge">High: <span id="high">0</span></div>
-        <div class="badge">Level: <span id="level">1</span></div>
-      </div>
-      <div id="uiControls">
-        <button id="pauseBtn">Pause</button>
-        <button id="restartBtn" class="alt">Restart</button>
-        <button id="muteBtn" class="alt">Mute</button>
-      </div>
-    </div>
-
-    <div class="game-wrap">
-      <canvas id="game" width="900" height="360"></canvas>
-      <div class="controls-row">
-        <div class="legend">Controls: Space / Tap to jump. Collect coins, avoid obstacles.</div>
-      </div>
-    </div>
+  <h1>🏃 Runner — Endless Coin Collector</h1>
+  <div id="stats">
+    Score: <span id="score">0</span> |
+    High: <span id="highScore">0</span> |
+    Level: <span id="level">1</span> |
+    Lives: <span id="lives">❤️❤️❤️❤️</span>
+  </div>
+  <div id="gameArea">
+    <div class="player" id="player"></div>
+  </div>
+  <div>
+    <button id="pauseBtn">Pause</button>
+    <button id="restartBtn">Restart</button>
   </div>
 
-  <!-- Sounds -->
-  <audio id="sfxJump" preload="auto">
-    <source src="https://actions.google.com/sounds/v1/human_voices/slide_whistle.ogg" type="audio/ogg">
-  </audio>
-  <audio id="sfxCoin" preload="auto">
-    <source src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg" type="audio/ogg">
-  </audio>
-  <audio id="sfxHit" preload="auto">
-    <source src="https://actions.google.com/sounds/v1/impacts/impact_hard.ogg" type="audio/ogg">
-  </audio>
+  <script>
+    const gameArea = document.getElementById("gameArea");
+    const player = document.getElementById("player");
+    const scoreEl = document.getElementById("score");
+    const highScoreEl = document.getElementById("highScore");
+    const levelEl = document.getElementById("level");
+    const livesEl = document.getElementById("lives");
 
-<script>
-(() => {
-  // Canvas & context
-  const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
+    let score = 0, highScore = 0, level = 1, lives = 4;
+    let playing = true, speed = 3, gameLoop;
 
-  // UI elements
-  const scoreEl = document.getElementById('score');
-  const highEl = document.getElementById('high');
-  const levelEl = document.getElementById('level');
-  const pauseBtn = document.getElementById('pauseBtn');
-  const restartBtn = document.getElementById('restartBtn');
-  const muteBtn = document.getElementById('muteBtn');
+    // player movement
+    let posX = 50;
+    document.addEventListener("keydown", e=>{
+      if(!playing) return;
+      if(e.key==="ArrowRight") posX += 20;
+      if(e.key==="ArrowLeft") posX -= 20;
+      if(posX < 0) posX = 0;
+      if(posX > gameArea.clientWidth-40) posX = gameArea.clientWidth-40;
+      player.style.left = posX+"px";
+    });
 
-  // Sounds
-  const sfxJump = document.getElementById('sfxJump');
-  const sfxCoin = document.getElementById('sfxCoin');
-  const sfxHit = document.getElementById('sfxHit');
-  let muted = false;
+    function spawnCoin(){
+      const coin = document.createElement("div");
+      coin.className = "coin";
+      coin.style.top = "0px";
+      coin.style.left = Math.random()*(gameArea.clientWidth-24)+"px";
+      gameArea.appendChild(coin);
 
-  // Game state
-  let width = canvas.width;
-  let height = canvas.height;
-  let groundY = height - 60;
+      let fall = setInterval(()=>{
+        if(!playing){ clearInterval(fall); return; }
+        let top = parseInt(coin.style.top);
+        coin.style.top = top+speed+"px";
 
-  let score = 0;
-  let high = parseInt(localStorage.getItem('runner_high') || '0', 10);
-  highEl.textContent = high;
-  let level = 1;
-  let distance = 0; // used to increase difficulty over time
+        // collision check
+        const pRect = player.getBoundingClientRect();
+        const cRect = coin.getBoundingClientRect();
+        if(!(pRect.right < cRect.left || 
+             pRect.left > cRect.right || 
+             pRect.bottom < cRect.top || 
+             pRect.top > cRect.bottom)){
+          score += 10;
+          if(score>highScore) highScore=score;
+          scoreEl.textContent = score;
+          highScoreEl.textContent = highScore;
+          coin.remove();
+          clearInterval(fall);
+        }
 
-  let gameSpeed = 4; // base speed - increases with level
-  let gravity = 0.9;
-
-  // Player
-  const player = {
-    x: 80,
-    y: groundY - 48,
-    w: 40,
-    h: 48,
-    vy: 0,
-    jumping: false,
-    grounded: true
-  };
-
-  // Entities
-  let obstacles = []; // {x,w,h}
-  let coins = [];     // {x,y,r, collected}
-  let particles = [];
-
-  // Timers
-  let lastObstacleTime = 0;
-  let lastCoinTime = 0;
-  let obstacleInterval = 1500; // ms
-  let coinInterval = 900; // ms
-  let lastFrame = 0;
-  let running = true;
-
-  // Utility
-  function rand(min, max){ return Math.random()*(max-min)+min; }
-
-  // Resize handling (keeps canvas at fixed internal size but scales with CSS)
-  function resize(){
-    const rect = canvas.getBoundingClientRect();
-    // Keep internal size fixed (900x360) but we can scale drawing to rect if we want.
-    width = canvas.width;
-    height = canvas.height;
-    groundY = height - 60;
-    // reposition player on resize
-    player.y = Math.min(player.y, groundY - player.h);
-  }
-  window.addEventListener('resize', resize);
-
-  // Spawn obstacle
-  function spawnObstacle(){
-    // obstacle sizes vary by level
-    const h = rand(28, 52) + Math.min(level*1.5, 60);
-    const w = rand(18, 40);
-    obstacles.push({ x: width + 20, w, h, y: groundY - h });
-  }
-
-  // Spawn coin (in the air so player can jump to collect)
-  function spawnCoin(){
-    const r = 12;
-    const y = groundY - rand(80, 180);
-    coins.push({ x: width + 20, y, r, collected:false });
-  }
-
-  // Collision helpers
-  function rectsOverlap(ax,ay,aw,ah, bx,by,bw,bh){
-    return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
-  }
-  function circleRectOverlap(cx,cy,r, rx,ry,rw,rh){
-    // closest point on rect to circle center
-    const closestX = Math.max(rx, Math.min(cx, rx+rw));
-    const closestY = Math.max(ry, Math.min(cy, ry+rh));
-    const dx = cx - closestX;
-    const dy = cy - closestY;
-    return (dx*dx + dy*dy) < (r*r);
-  }
-
-  // Input
-  function jump(){
-    if(!running) return;
-    if(player.grounded){
-      player.vy = -15 - Math.min(level*0.2,6);
-      player.grounded = false;
-      player.jumping = true;
-      try { if(!muted) sfxJump.play(); } catch(e){}
+        if(top>gameArea.clientHeight-20){ coin.remove(); clearInterval(fall); }
+      },30);
     }
-  }
-  window.addEventListener('keydown', (e)=> {
-    if(e.code === 'Space') { e.preventDefault(); jump(); }
-    if(e.key === 'p' || e.key === 'P') togglePause();
-  });
-  // touch to jump
-  canvas.addEventListener('touchstart', (e)=> { e.preventDefault(); jump(); }, {passive:false});
-  canvas.addEventListener('mousedown', (e)=> { jump(); });
 
-  // Pause / restart / mute
-  function togglePause(){
-    running = !running;
-    pauseBtn.textContent = running ? 'Pause' : 'Resume';
-    if(running){ lastFrame = performance.now(); requestAnimationFrame(loop); }
-  }
-  pauseBtn.addEventListener('click', togglePause);
+    function spawnObstacle(){
+      const obs = document.createElement("div");
+      obs.className = "obstacle";
+      obs.style.left = Math.random()*(gameArea.clientWidth-30)+"px";
+      obs.style.top = "0px";
+      gameArea.appendChild(obs);
 
-  restartBtn.addEventListener('click', () => {
-    resetGame();
-  });
+      let fall = setInterval(()=>{
+        if(!playing){ clearInterval(fall); return; }
+        let top = parseInt(obs.style.top);
+        obs.style.top = top+speed+"px";
 
-  muteBtn.addEventListener('click', () => {
-    muted = !muted;
-    muteBtn.textContent = muted ? 'Unmute' : 'Mute';
-  });
+        const pRect = player.getBoundingClientRect();
+        const oRect = obs.getBoundingClientRect();
+        if(!(pRect.right < oRect.left || 
+             pRect.left > oRect.right || 
+             pRect.bottom < oRect.top || 
+             pRect.top > oRect.bottom)){
+          lives--;
+          updateLives();
+          obs.remove();
+          clearInterval(fall);
+          if(lives<=0){ gameOver(); }
+        }
 
-  // Reset / start
-  function resetGame(){
-    obstacles = [];
-    coins = [];
-    particles = [];
-    score = 0;
-    distance = 0;
-    level = 1;
-    gameSpeed = 4;
-    obstacleInterval = 1500;
-    coinInterval = 900;
-    player.y = groundY - player.h;
-    player.vy = 0;
-    player.grounded = true;
-    lastObstacleTime = 0;
-    lastCoinTime = 0;
-    running = true;
-    pauseBtn.textContent = 'Pause';
-    lastFrame = performance.now();
-    requestAnimationFrame(loop);
-  }
-
-  // Particle simple effect for coin
-  function spawnParticles(x,y, color){
-    for(let i=0;i<10;i++){
-      particles.push({
-        x, y,
-        vx: rand(-2,2),
-        vy: rand(-4,-1),
-        life: rand(30,60),
-        color
-      });
+        if(top>gameArea.clientHeight-20){ obs.remove(); clearInterval(fall); }
+      },30);
     }
-  }
 
-  // Main loop
-  function update(dt){
-    // dt in ms
-    if(!running) return;
+    function updateLives(){
+      livesEl.textContent = "❤️".repeat(lives) + "🤍".repeat(4-lives);
+    }
 
-    // difficulty increases with distance / score
-    distance += gameSpeed * (dt/16);
-    if(distance > 300 * level){
+    function levelUp(){
       level++;
-      gameSpeed += 0.4; // speed increases
-      obstacleInterval = Math.max(650, obstacleInterval - 80);
-      coinInterval = Math.max(420, coinInterval - 30);
+      levelEl.textContent = level;
+      if(speed < 10) speed++;
     }
 
-    // Player physics
-    player.vy += gravity * (dt/16);
-    player.y += player.vy * (dt/16);
-
-    if(player.y + player.h >= groundY){
-      player.y = groundY - player.h;
-      player.vy = 0;
-      player.grounded = true;
-      player.jumping = false;
+    function gameStart(){
+      gameLoop = setInterval(()=>{
+        spawnCoin();
+        if(Math.random()<0.3) spawnObstacle();
+        if(score>0 && score%50===0){ levelUp(); }
+      }, 1000);
     }
 
-    // spawn obstacles
-    lastObstacleTime += dt;
-    if(lastObstacleTime > obstacleInterval){
-      spawnObstacle();
-      lastObstacleTime = 0;
-    }
-    // spawn coins
-    lastCoinTime += dt;
-    if(lastCoinTime > coinInterval){
-      spawnCoin();
-      lastCoinTime = 0;
+    function gameOver(){
+      playing=false;
+      clearInterval(gameLoop);
+      alert("Game Over! Final Score: "+score);
     }
 
-    // move obstacles & check collisions
-    for(let i = obstacles.length-1; i>=0; i--){
-      const ob = obstacles[i];
-      ob.x -= gameSpeed * (dt/16);
-      if(ob.x + ob.w < -50){ obstacles.splice(i,1); continue; }
-      if(rectsOverlap(player.x, player.y, player.w, player.h, ob.x, ob.y, ob.w, ob.h)){
-        // hit
-        gameOver();
-        return;
-      }
-    }
+    document.getElementById("pauseBtn").onclick = ()=>{
+      playing=!playing;
+      if(playing){ gameStart(); } else { clearInterval(gameLoop); }
+    };
+    document.getElementById("restartBtn").onclick = ()=>{
+      clearInterval(gameLoop);
+      score=0; level=1; lives=4; speed=3; playing=true;
+      scoreEl.textContent=score;
+      levelEl.textContent=level;
+      updateLives();
+      gameArea.querySelectorAll(".coin,.obstacle").forEach(el=>el.remove());
+      gameStart();
+    };
 
-    // move coins & collect
-    for(let i = coins.length-1; i>=0; i--){
-      const c = coins[i];
-      c.x -= gameSpeed * (dt/16);
-      if(c.x + c.r < -20){ coins.splice(i,1); continue; }
-      if(circleRectOverlap(c.x, c.y, c.r, player.x, player.y, player.w, player.h)){
-        // collect
-        score += 10;
-        spawnParticles(c.x, c.y, '#ffd666');
-        try { if(!muted) sfxCoin.play(); } catch(e){}
-        coins.splice(i,1);
-        if(score > high){ high = score; localStorage.setItem('runner_high', String(high)); highEl.textContent = high; }
-      }
-    }
-
-    // update particles
-    for(let i = particles.length-1; i>=0; i--){
-      const p = particles[i];
-      p.vy += 0.2;
-      p.x += p.vx;
-      p.y += p.vy;
-      p.life--;
-      if(p.life <= 0) particles.splice(i,1);
-    }
-
-    // update UI
-    scoreEl.textContent = score;
-    levelEl.textContent = level;
-    // time isn't tracked as seconds here, but could be distance-based; omitted to keep UI clean
-  }
-
-  function gameOver(){
-    running = false;
-    try { if(!muted) sfxHit.play(); } catch(e){}
-    // show simple modal via alert OR draw text
-    setTimeout(()=> {
-      const again = confirm('Game Over. Score: ' + score + '\nPlay again?');
-      if(again) resetGame();
-    }, 50);
-  }
-
-  // Draw
-  function draw(){
-    // draw background
-    ctx.clearRect(0,0,width,height);
-    // sky gradient (simple parallax)
-    const g = ctx.createLinearGradient(0,0,0,height);
-    g.addColorStop(0, '#071428');
-    g.addColorStop(1, '#00121a');
-    ctx.fillStyle = g;
-    ctx.fillRect(0,0,width,height);
-
-    // moving ground pattern
-    const groundH = 60;
-    ctx.fillStyle = 'rgba(20,30,40,0.9)';
-    ctx.fillRect(0, groundY, width, groundH);
-
-    // draw obstacles
-    ctx.fillStyle = '#d9534f';
-    obstacles.forEach(ob => {
-      ctx.fillRect(Math.round(ob.x), Math.round(ob.y), ob.w, ob.h);
-    });
-
-    // draw coins
-    coins.forEach(c => {
-      // coin body
-      const cx = Math.round(c.x);
-      const cy = Math.round(c.y);
-      // glow
-      ctx.beginPath();
-      ctx.fillStyle = 'rgba(255,210,90,0.14)';
-      ctx.arc(cx, cy, c.r+6, 0, Math.PI*2);
-      ctx.fill();
-      // coin circle
-      ctx.beginPath();
-      const grad = ctx.createLinearGradient(cx-c.r, cy-c.r, cx+c.r, cy+c.r);
-      grad.addColorStop(0, '#fff7c9');
-      grad.addColorStop(0.4, '#ffd666');
-      grad.addColorStop(1, '#ffb84d');
-      ctx.fillStyle = grad;
-      ctx.arc(cx, cy, c.r, 0, Math.PI*2);
-      ctx.fill();
-      // center dot
-      ctx.fillStyle = '#7a4f10';
-      ctx.font = (c.r) + 'px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('★', cx, cy+1);
-    });
-
-    // draw player (simple runner sprite)
-    // body
-    ctx.fillStyle = '#61dafb';
-    ctx.fillRect(player.x, player.y, player.w, player.h);
-    // eye
-    ctx.fillStyle = '#042';
-    ctx.fillRect(player.x + player.w - 12, player.y + 12, 6, 6);
-
-    // draw particles
-    particles.forEach(p => {
-      ctx.fillStyle = p.color;
-      ctx.fillRect(p.x, p.y, 3, 3);
-    });
-
-    // HUD drawn in DOM, so no extra draw needed
-  }
-
-  // Frame loop using requestAnimationFrame
-  function loop(ts){
-    if(!lastFrame) lastFrame = ts;
-    const dt = Math.min(60, ts - lastFrame);
-    lastFrame = ts;
-    update(dt);
-    draw();
-    if(running) requestAnimationFrame(loop);
-  }
-
-  // Start
-  resize();
-  resetGame(); // starts loop
-
-  // expose start for resume when paused
-  // ensure audio plays after user interaction due to autoplay policy
-  document.addEventListener('click', ()=> { try { sfxCoin.play().catch(()=>{}); sfxCoin.pause(); } catch(e){} }, {once:true});
-
-})();
-</script>
+    // init
+    updateLives();
+    gameStart();
+  </script>
 </body>
 </html>
+
+      
+
+
