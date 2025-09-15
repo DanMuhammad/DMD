@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DMD Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(to right, #4facfe, #00f2fe);
+    }
+    #gameArea {
+      width: 300px;
+      height: 400px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+    #coin {
+      font-size: 40px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    #coin:active {
+      transform: scale(1.3);
+    }
+    #score {
+      margin-top: 20px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameArea">
+    <div id="coin">🪙</div>
+    <div id="score">Coins: 0</div>
+  </div>
+
+  <script>
+    let coins = 0;
+    const coin = document.getElementById("coin");
+    const score = document.getElementById("score");
+
+    coin.addEventListener("click", () => {
+      coins++;
+      score.textContent = "Coins: " + coins;
+    });
+  </script>
+</body>
+</html>
