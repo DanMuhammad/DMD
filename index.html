@@ -1,61 +1,357 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DMD Game</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: Arial, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background: linear-gradient(to right, #4facfe, #00f2fe);
-    }
-    #gameArea {
-      width: 300px;
-      height: 400px;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.3);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-    }
-    #coin {
-      font-size: 40px;
-      cursor: pointer;
-      transition: transform 0.2s;
-    }
-    #coin:active {
-      transform: scale(1.3);
-    }
-    #score {
-      margin-top: 20px;
-      font-size: 20px;
-      font-weight: bold;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Endless Coin Collector — DMD</title>
+<style>
+  :root{
+    --bg1:#0f1724; --bg2:#071028; --card:#0b1221; --accent:#ffd166;
+    --danger:#ff6b6b; --text:#e6eef8;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; font-family:Inter,system-ui,Arial,Helvetica;
+    display:flex; align-items:center; justify-content:center;
+    background: radial-gradient(circle at 10% 10%, #073b66 0%, #00121a 40%), linear-gradient(180deg,#001219 0%,#00172b 100%);
+    color:var(--text);
+    padding:20px;
+  }
+  .wrap{
+    width:100%; max-width:820px; display:grid; grid-template-columns:320px 1fr; gap:18px;
+  }
+  .panel{
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.05));
+    border-radius:12px; padding:14px; border:1px solid rgba(255,255,255,0.04);
+  }
+  .left{min-height:480px; display:flex;flex-direction:column; gap:10px}
+  h1{margin:0 0 6px 0;font-size:20px}
+  .stat{display:flex;justify-content:space-between;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.02)}
+  .big{font-size:22px;font-weight:700}
+  #gameArea{position:relative;background:linear-gradient(180deg,#071028,#091427); border-radius:10px; height:520px; overflow:hidden; border:1px solid rgba(255,255,255,0.03)}
+  .coin{
+    position:absolute; width:64px; height:64px; cursor:pointer; user-select:none;
+    transition:transform .12s ease;
+    will-change:left,top,transform;
+  }
+  .coin.good{filter:drop-shadow(0 6px 12px rgba(0,0,0,0.5))}
+  .coin.bad{transform-origin:center; filter: drop-shadow(0 6px 16px rgba(0,0,0,0.6)) saturate(0.8); border-radius:8px;}
+  .controls{display:flex; gap:8px; margin-top:6px}
+  button{padding:8px 12px;border-radius:8px;border:0;background:#1f6feb;color:#fff;cursor:pointer}
+  button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+  .footer-note{font-size:12px;color:#9fb3d6;margin-top:8px}
+  .top-row{display:flex;gap:8px;align-items:center; justify-content:space-between}
+  .center-col{display:flex;flex-direction:column;gap:10px}
+  .small{font-size:13px;color:#9fb3d6}
+  .level-badge{background:linear-gradient(90deg,#ffd166,#ffb86b);color:#0b1221;padding:6px 10px;border-radius:999px;font-weight:700}
+  @media(max-width:880px){ .wrap{grid-template-columns:1fr} .left{order:2} }
+</style>
 </head>
 <body>
-  <div id="gameArea">
-    <div id="coin">🪙</div>
-    <div id="score">Coins: 0</div>
+  <div class="wrap">
+    <div class="panel left">
+      <div class="top-row">
+        <div>
+          <h1>Endless Coin Collector</h1>
+          <div class="small">No limits — difficulty increases as you score</div>
+        </div>
+        <div class="level-badge" id="levelBadge">Lv 1</div>
+      </div>
+
+      <div style="margin-top:10px">
+        <div class="stat"><div>Score</div><div class="big" id="score">0</div></div>
+        <div style="height:8px"></div>
+        <div class="stat"><div>High Score</div><div id="high">0</div></div>
+        <div style="height:8px"></div>
+        <div class="stat"><div>Time survived</div><div id="time">0s</div></div>
+        <div style="height:8px"></div>
+        <div class="stat"><div>Coins on screen</div><div id="onScreen">0</div></div>
+
+        <div class="controls">
+          <button id="pauseBtn">Pause</button>
+          <button id="restartBtn" class="ghost">Restart</button>
+          <button id="resetHS" class="ghost">Reset HS</button>
+        </div>
+
+        <div class="footer-note">
+          Tips: Click gold coins to gain points. Avoid red coins (they subtract). Difficulty ramps up every 10 points.
+        </div>
+      </div>
+    </div>
+
+    <div class="panel center-col">
+      <div id="gameArea" aria-label="game area"></div>
+      <div style="display:flex;gap:12px;align-items:center;justify-content:flex-end;margin-top:8px">
+        <div class="small">Controls: Tap / Click coins</div>
+      </div>
+    </div>
   </div>
 
-  <script>
-    let coins = 0;
-    const coin = document.getElementById("coin");
-    const score = document.getElementById("score");
+<script>
+/*
+ Endlessly progressive coin collector
+ Author: ChatGPT (helper for Abokina)
+*/
 
-    coin.addEventListener("click", () => {
-      coins++;
-      score.textContent = "Coins: " + coins;
+(() => {
+  // Config
+  const BASE_SPAWN_INTERVAL = 1400; // ms initial
+  const MIN_SPAWN_INTERVAL = 400; // ms cap
+  const BASE_BAD_CHANCE = 0.08; // chance of bad coin at low levels
+  const MAX_BAD_CHANCE = 0.3; // at higher levels
+  const MAX_COINS_ON_SCREEN = 8;
+
+  // DOM
+  const gameArea = document.getElementById('gameArea');
+  const scoreEl = document.getElementById('score');
+  const highEl = document.getElementById('high');
+  const timeEl = document.getElementById('time');
+  const levelBadge = document.getElementById('levelBadge');
+  const onScreenEl = document.getElementById('onScreen');
+
+  const pauseBtn = document.getElementById('pauseBtn');
+  const restartBtn = document.getElementById('restartBtn');
+  const resetHS = document.getElementById('resetHS');
+
+  // State
+  let score = 0;
+  let high = parseInt(localStorage.getItem('dmd_high')||'0',10);
+  highEl.textContent = high;
+  let alive = true;
+  let startTime = Date.now();
+  let elapsedSec = 0;
+  let spawnTimer = null;
+  let moveTimer = null;
+  let spawnInterval = BASE_SPAWN_INTERVAL;
+  let coinsOnScreen = [];
+  let paused = false;
+
+  // Sounds (optional — will only play if allowed)
+  const ding = new Audio('https://www.soundjay.com/buttons/sounds/button-09.mp3');
+  ding.volume = 0.9;
+  const badSound = new Audio('https://www.soundjay.com/button/sounds/button-10.mp3');
+  badSound.volume = 0.9;
+
+  // Helpers
+  function updateUI(){
+    scoreEl.textContent = score;
+    highEl.textContent = high;
+    elapsedSec = Math.floor((Date.now() - startTime)/1000);
+    timeEl.textContent = elapsedSec + 's';
+    const level = getLevel();
+    levelBadge.textContent = 'Lv ' + level;
+    onScreenEl.textContent = coinsOnScreen.length;
+  }
+
+  function getLevel(){
+    return Math.floor(score / 10) + 1; // level increases every 10 points
+  }
+
+  function difficultyFactor(){
+    // returns 0..1 based on level progression
+    const level = getLevel();
+    return Math.min(1, level / 100); // caps at level 100 for scaling
+  }
+
+  function currentSpawnInterval(){
+    // reduce interval as difficulty increases
+    const f = difficultyFactor();
+    return Math.max(MIN_SPAWN_INTERVAL, BASE_SPAWN_INTERVAL - f * (BASE_SPAWN_INTERVAL - MIN_SPAWN_INTERVAL));
+  }
+
+  function currentBadChance(){
+    const f = difficultyFactor();
+    return BASE_BAD_CHANCE + f * (MAX_BAD_CHANCE - BASE_BAD_CHANCE);
+  }
+
+  function randomPos(size){
+    const pad = 8;
+    const areaW = gameArea.clientWidth - size - pad;
+    const areaH = gameArea.clientHeight - size - pad;
+    const x = Math.max(pad, Math.random() * Math.max(1, areaW));
+    const y = Math.max(pad, Math.random() * Math.max(1, areaH));
+    return {x,y};
+  }
+
+  function spawnCoin(){
+    if(paused) return;
+    if(coinsOnScreen.length >= MAX_COINS_ON_SCREEN) return;
+    const badChance = currentBadChance();
+    const isBad = Math.random() < badChance;
+    const img = document.createElement('img');
+    img.className = 'coin ' + (isBad ? 'bad' : 'good');
+    img.draggable = false;
+    img.style.width = isBad ? '54px' : '64px';
+    img.style.height = 'auto';
+    img.style.opacity = 0;
+    img.style.transition = 'opacity .25s, transform .12s';
+
+    if(isBad){
+      // red coin (bad)
+      img.src = 'https://i.ibb.co/4Y9y1pR/red-coin.png';
+    } else {
+      // gold coin
+      img.src = 'https://i.ibb.co/3f7p3x3/coin.png';
+    }
+
+    const size = isBad ? 54 : 64;
+    const {x,y} = randomPos(size);
+    img.style.left = x + 'px';
+    img.style.top = y + 'px';
+
+    // click handler
+    img.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      if(paused) return;
+      if(isBad){
+        // penalty
+        score = Math.max(0, score - Math.max(1, Math.floor(getLevel()/2)));
+        try { badSound.play(); } catch(e){}
+      } else {
+        score++;
+        try { ding.play(); } catch(e){}
+      }
+      // small pop animation
+      img.style.transform = 'scale(1.15)';
+      setTimeout(()=>{ if(img) img.style.transform = ''; }, 120);
+
+      // remove immediately after collection
+      removeCoin(img);
+      updateAfterScore();
     });
-  </script>
+
+    // remove if user doesn't click after some time - auto despawn
+    const lifetime = Math.max(2500, 6000 - (getLevel()*20)); // coins live shorter at higher levels
+    const despawnTimeout = setTimeout(()=> { removeCoin(img); }, lifetime);
+
+    // append
+    gameArea.appendChild(img);
+    coinsOnScreen.push({el:img, bad:isBad, despawnTimeout});
+    // fade in
+    requestAnimationFrame(()=> { img.style.opacity = 1; });
+
+    updateUI();
+  }
+
+  function removeCoin(img){
+    // find coin entry
+    const idx = coinsOnScreen.findIndex(c => c.el === img);
+    if(idx !== -1){
+      const c = coinsOnScreen[idx];
+      clearTimeout(c.despawnTimeout);
+      coinsOnScreen.splice(idx,1);
+    }
+    if(img && img.parentNode) img.parentNode.removeChild(img);
+    updateUI();
+  }
+
+  function updateAfterScore(){
+    // update high score if needed
+    if(score > high){
+      high = score;
+      localStorage.setItem('dmd_high', high);
+    }
+    // every score change we might speed up spawning
+    resetSpawnTimer();
+    updateUI();
+  }
+
+  function resetSpawnTimer(){
+    if(spawnTimer) clearInterval(spawnTimer);
+    spawnInterval = Math.round(currentSpawnInterval());
+    spawnTimer = setInterval(() => {
+      // spawn multiple coins as level increases
+      const level = getLevel();
+      const extra = Math.floor(level / 20); // every 20 levels add one coin spawn
+      for(let i=0;i<1+extra;i++) spawnCoin();
+    }, spawnInterval);
+  }
+
+  function startMovingCycle(){
+    // small movement jitter to make coins feel alive
+    moveTimer = setInterval(()=> {
+      coinsOnScreen.forEach(c => {
+        const el = c.el;
+        const offset = Math.min(24, 6 + getLevel()*0.2);
+        const nx = Math.max(4, Math.min(gameArea.clientWidth - 64, parseFloat(el.style.left || 0) + (Math.random()*offset - offset/2)));
+        const ny = Math.max(4, Math.min(gameArea.clientHeight - 64, parseFloat(el.style.top || 0) + (Math.random()*offset - offset/2)));
+        el.style.left = nx + 'px';
+        el.style.top = ny + 'px';
+      });
+    }, 700);
+  }
+
+  function startGame(){
+    // reset state
+    score = 0;
+    startTime = Date.now();
+    alive = true;
+    paused = false;
+    // remove existing coins
+    coinsOnScreen.slice().forEach(c => removeCoin(c.el));
+    updateUI();
+    resetSpawnTimer();
+    if(moveTimer) clearInterval(moveTimer);
+    startMovingCycle();
+  }
+
+  function pauseToggle(){
+    paused = !paused;
+    if(paused){
+      pauseBtn.textContent = 'Resume';
+      clearInterval(spawnTimer);
+      clearInterval(moveTimer);
+      // freeze despawn timers by clearing them (we won't restore)
+      coinsOnScreen.forEach(c => clearTimeout(c.despawnTimeout));
+    } else {
+      pauseBtn.textContent = 'Pause';
+      // resume spawn & movement
+      resetSpawnTimer();
+      startMovingCycle();
+    }
+  }
+
+  function restart(){
+    // clear timers and restart fresh
+    if(spawnTimer) clearInterval(spawnTimer);
+    if(moveTimer) clearInterval(moveTimer);
+    coinsOnScreen.slice().forEach(c => {
+      clearTimeout(c.despawnTimeout);
+      if(c.el && c.el.parentNode) c.el.parentNode.removeChild(c.el);
+    });
+    coinsOnScreen = [];
+    score = 0;
+    startTime = Date.now();
+    updateUI();
+    resetSpawnTimer();
+    startMovingCycle();
+  }
+
+  // UI buttons
+  pauseBtn.addEventListener('click', pauseToggle);
+  restartBtn.addEventListener('click', () => { restart(); });
+  resetHS.addEventListener('click', () => {
+    if(confirm('Reset high score?')) {
+      localStorage.setItem('dmd_high', '0');
+      high = 0; highEl.textContent = 0;
+    }
+  });
+
+  // click outside removes tiny popups (not needed)
+  gameArea.addEventListener('click', () => { /* no op */ });
+
+  // start
+  startGame();
+
+  // update UI loop
+  setInterval(updateUI, 500);
+
+  // responsive: recalc timers on resize
+  window.addEventListener('resize', () => {
+    // nothing heavy, coins will reposition gradually by jitter
+  });
+
+})();
+</script>
 </body>
 </html>
