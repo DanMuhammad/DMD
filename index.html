@@ -8,55 +8,63 @@
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      background: #f4f4f4;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      color: #fff;
       margin: 0;
-      padding: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
     }
     h1 {
-      background: #222;
-      color: #fff;
-      padding: 15px;
-      margin: 0;
-    }
-    #game {
-      margin-top: 40px;
+      font-size: 32px;
+      margin-bottom: 30px;
     }
     #tapButton {
-      font-size: 22px;
-      padding: 20px 50px;
+      font-size: 26px;
+      padding: 30px 70px;
       border: none;
-      border-radius: 12px;
+      border-radius: 15px;
       background: gold;
+      color: #222;
+      font-weight: bold;
       cursor: pointer;
-      transition: transform 0.1s;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.4);
+      transition: transform 0.15s, background 0.3s;
     }
     #tapButton:active {
-      transform: scale(0.95);
+      transform: scale(0.9);
+      background: #ffd700;
     }
     .stats {
-      margin-top: 30px;
-      font-size: 20px;
+      margin-top: 40px;
+      font-size: 22px;
+      background: rgba(0,0,0,0.3);
+      padding: 20px 40px;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    .stats p {
+      margin: 15px 0;
     }
   </style>
 </head>
 <body>
   <h1>Tap Coin Collector 🪙</h1>
 
-  <div id="game">
-    <button id="tapButton">Tap Me!</button>
-    <div class="stats">
-      <p>Total Taps: <span id="taps">0</span></p>
-      <p>Gold Coins 🟡: <span id="gold">0</span></p>
-      <p>Blue Coins 🔵: <span id="blue">0</span></p>
-    </div>
+  <button id="tapButton">👉 TAP ME 👈</button>
+
+  <div class="stats">
+    <p>Total Taps: <span id="taps">0</span></p>
+    <p>Gold Coins 🟡: <span id="gold">0</span></p>
+    <p>Blue Coins 🔵: <span id="blue">0</span></p>
   </div>
 
   <script>
-    // Fixed thresholds
     const goldThreshold = 1000; 
     const blueThreshold = 5000;
 
-    // Game state
     let taps = 0;
     let gold = 0;
     let blue = 0;
@@ -69,13 +77,11 @@
     button.addEventListener("click", () => {
       taps++;
 
-      // Check gold coin
       if (taps % goldThreshold === 0) {
         gold++;
         goldEl.textContent = gold;
       }
 
-      // Check blue coin
       if (taps % blueThreshold === 0) {
         blue++;
         blueEl.textContent = blue;
@@ -86,9 +92,10 @@
   </script>
 </body>
 </html>
-
+    
           
 
     
     
+
 
