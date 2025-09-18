@@ -1,102 +1,210 @@
-
-
-    
-    
-
-
-
-
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Tap to Collect Coins</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background: #f0f0f0;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    h1 {
-      margin-bottom: 20px;
-    }
-    button {
-      font-size: 22px;
-      padding: 15px 40px;
-      margin: 20px;
-      cursor: pointer;
-      border: none;
-      border-radius: 12px;
-      background: gold;
-      box-shadow: 0px 4px 6px rgba(0,0,0,0.2);
-    }
-    .stats {
-      font-size: 20px;
-      margin-top: 10px;
-      background: #fff;
-      padding: 15px;
-      border-radius: 10px;
-      box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Code Generator — Tap Game</title>
+<style>
+  :root{--bg:#0f1724;--card:#0b1220;--accent:#ffd54a;--muted:rgba(255,255,255,0.65)}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;background:linear-gradient(135deg,#071029,#0f1724);color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .wrap{width:100%;max-width:920px}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:14px;padding:22px;box-shadow:0 10px 30px rgba(2,6,23,0.6)}
+  h1{margin:0 0 12px;font-size:22px}
+  .lead{color:var(--muted);margin-bottom:18px}
+  .center{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  #genBtn{background:linear-gradient(180deg,var(--accent),#ffb300);border:0;padding:18px 36px;border-radius:12px;font-size:20px;color:#111;cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,0.5)}
+  #genBtn:active{transform:scale(.98)}
+  .bigCode{margin-left:12px;padding:14px 18px;border-radius:10px;background:rgba(0,0,0,0.25);font-weight:700;font-size:18px}
+  .stats{margin-top:14px;color:var(--muted);display:flex;gap:18px;flex-wrap:wrap}
+  .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);padding:8px 12px;border-radius:8px;cursor:pointer}
+  .right{margin-left:auto;display:flex;gap:8px}
+  .history{margin-top:18px;max-height:360px;overflow:auto;border-radius:10px;padding:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005))}
+  .row{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:8px;margin-bottom:8px;background:rgba(0,0,0,0.12)}
+  .meta{color:var(--muted);font-size:13px}
+  .codeTxt{font-family:monospace;background:rgba(0,0,0,0.15);padding:6px 10px;border-radius:8px}
+  .small{font-size:13px;color:var(--muted)}
+  .controls{display:flex;gap:8px;margin-top:12px}
+  @media(max-width:680px){ .center{flex-direction:column;align-items:stretch} .bigCode{margin-left:0} #genBtn{width:100%} }
+</style>
 </head>
 <body>
-  <h1>Tap Me!</h1>
-  <button onclick="tap()">👉 Tap</button>
-  <div class="stats">
-    <p>Total Taps: <span id="taps">0</span></p>
-    <p>Gold Coins 🟡: <span id="gold">0</span></p>
-    <p>Blue Coins 🔵: <span id="blue">0</span></p>
+  <div class="wrap">
+    <div class="card">
+      <h1>Tap → Generate Code</h1>
+      <div class="lead">Danna maɓallin ƙasa don ƙirƙirar unique code. Za a nuna lokaci da za a iya **copy** da kuma **history**.</div>
+
+      <div class="center">
+        <button id="genBtn">👉 Generate Code</button>
+        <div class="bigCode" id="currentCode">— no code yet —</div>
+
+        <div class="right">
+          <div class="small">Generated: <span id="count">0</span></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="copyBtn" class="btn">Copy Current</button>
+        <button id="downloadBtn" class="btn">Download CSV</button>
+        <button id="clearBtn" class="btn">Clear History</button>
+      </div>
+
+      <div class="history" id="historyList" aria-live="polite" aria-atomic="true">
+        <!-- history rows -->
+      </div>
+    </div>
   </div>
 
-  <script>
-    // Load saved progress
-    let taps = parseInt(localStorage.getItem("taps")) || 0;
-    let gold = parseInt(localStorage.getItem("gold")) || 0;
-    let blue = parseInt(localStorage.getItem("blue")) || 0;
+<script>
+  // Utility: generate a readable unique code
+  function generateUniqueCode() {
+    // Example format: ABC-7k9F-20250917-5x (readable + timestamp + random)
+    // Part A: 4 uppercase letters
+    const letters = () => Array.from({length:4}, () => String.fromCharCode(65 + Math.floor(Math.random()*26))).join('');
+    // Part B: 4 alnum
+    const alnum = () => Math.random().toString(36).slice(2,6).toUpperCase();
+    // Date part (YYYYMMDDHHMMSS - short)
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const datePart = now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate()) + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
+    return `${letters()}-${alnum()}-${datePart}-${Math.random().toString(36).slice(2,4).toUpperCase()}`;
+  }
 
-    // Update UI
-    function updateUI() {
-      document.getElementById("taps").innerText = taps;
-      document.getElementById("gold").innerText = gold;
-      document.getElementById("blue").innerText = blue;
+  // LocalStorage key
+  const LS_KEY = 'generated_codes_v1';
+
+  // Load history from localStorage
+  function loadHistory() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch(e){ return []; }
+  }
+
+  function saveHistory(list) {
+    localStorage.setItem(LS_KEY, JSON.stringify(list));
+  }
+
+  // Render history
+  const historyEl = document.getElementById('historyList');
+  const currentCodeEl = document.getElementById('currentCode');
+  const countEl = document.getElementById('count');
+
+  function renderHistory() {
+    const list = loadHistory();
+    historyEl.innerHTML = '';
+    if(list.length === 0){
+      historyEl.innerHTML = '<div class="small" style="padding:12px;color:var(--muted)">No generated codes yet.</div>';
+      currentCodeEl.textContent = '— no code yet —';
+      countEl.textContent = 0;
+      return;
     }
+    // Show latest code as current
+    const latest = list[list.length-1];
+    currentCodeEl.textContent = latest.code;
+    countEl.textContent = list.length;
 
-    // Save progress
-    function saveGame() {
-      localStorage.setItem("taps", taps);
-      localStorage.setItem("gold", gold);
-      localStorage.setItem("blue", blue);
+    // render in reverse (latest first)
+    for(let i=list.length-1;i>=0;i--){
+      const item = list[i];
+      const row = document.createElement('div');
+      row.className = 'row';
+      const left = document.createElement('div');
+      left.innerHTML = `<div class="codeTxt">${item.code}</div><div class="meta">Generated: ${item.time} • ${item.note||''}</div>`;
+      const right = document.createElement('div');
+      right.style.display='flex';
+      right.style.gap='8px';
+      // copy button
+      const cbtn = document.createElement('button');
+      cbtn.className = 'btn';
+      cbtn.textContent = 'Copy';
+      cbtn.onclick = () => {
+        navigator.clipboard.writeText(item.code).then(()=> {
+          cbtn.textContent = 'Copied!';
+          setTimeout(()=> cbtn.textContent = 'Copy', 1000);
+        });
+      };
+      // info / remove
+      const del = document.createElement('button');
+      del.className = 'btn';
+      del.textContent = 'Delete';
+      del.onclick = () => {
+        if(!confirm('Delete this code from history?')) return;
+        const arr = loadHistory();
+        arr.splice(i,1); // remove correct index relative to forward order
+        saveHistory(arr);
+        renderHistory();
+      };
+      right.appendChild(cbtn);
+      right.appendChild(del);
+      row.appendChild(left);
+      row.appendChild(right);
+      historyEl.appendChild(row);
     }
+  }
 
-    // Tap logic
-    function tap() {
-      taps++;
+  // Generate action
+  document.getElementById('genBtn').addEventListener('click', () => {
+    const code = generateUniqueCode();
+    const now = new Date();
+    const humanTime = now.toLocaleString();
+    // save to history
+    const arr = loadHistory();
+    arr.push({ code, time: humanTime, note: '' });
+    saveHistory(arr);
+    renderHistory();
+    // brief flash animation
+    document.getElementById('genBtn').animate([{transform:'scale(1)'},{transform:'scale(.96)'},{transform:'scale(1)'}],{duration:160});
+  });
 
-      // Every 1000 taps → 1 Gold
-      if (taps % 1000 === 0) {
-        gold++;
-      }
+  // Copy current
+  document.getElementById('copyBtn').addEventListener('click', () => {
+    const list = loadHistory();
+    if(list.length === 0){ alert('No code to copy yet'); return; }
+    const last = list[list.length-1].code;
+    navigator.clipboard.writeText(last).then(()=> {
+      const b = document.getElementById('copyBtn');
+      b.textContent = 'Copied!';
+      setTimeout(()=> b.textContent = 'Copy Current', 1000);
+    }).catch(()=> alert('Copy failed — allow clipboard permission'));
+  });
 
-      // Every 5000 taps → 1 Blue
-      if (taps % 5000 === 0) {
-        blue++;
-      }
+  // Download CSV
+  document.getElementById('downloadBtn').addEventListener('click', () => {
+    const list = loadHistory();
+    if(list.length === 0){ alert('No codes to download'); return; }
+    let csv = 'code,generated_at\n';
+    list.forEach(row => {
+      // escape commas
+      csv += `"${row.code.replace(/"/g,'""')}","${row.time.replace(/"/g,'""')}"\n`;
+    });
+    const blob = new Blob([csv], {type: 'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'codes.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
 
-      updateUI();
-      saveGame();
-    }
+  // Clear history
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    if(!confirm('Clear all generated codes from this browser?')) return;
+    localStorage.removeItem(LS_KEY);
+    renderHistory();
+  });
 
-    // Initialize
-    updateUI();
-  </script>
+  // initial render
+  renderHistory();
+</script>
 </body>
 </html>
+
+    
+    
+
+
+
+
+
